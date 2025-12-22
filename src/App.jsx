@@ -10,15 +10,20 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 function App() {
-  const [handData, setHandData] = useState(null);
   const [guesses, setGuesses] = useState([]);
   const [targetWord, setTargetWord] = useState("Apple"); // Example start word
   const [gameStatus, setGameStatus] = useState("idle"); // idle, playing, won
   const [timeLeft, setTimeLeft] = useState(20);
   const [showTutorial, setShowTutorial] = useState(true);
 
+  // Use Ref for high-frequency hand data to avoid React re-renders logic
+  const handDataRef = useRef(null);
   const canvasExportRef = useRef(null);
   const timerRef = useRef(null);
+
+  const onHandData = (results) => {
+    handDataRef.current = results;
+  };
 
   const startGame = () => {
     setGameStatus("playing");
@@ -103,78 +108,144 @@ function App() {
 
       {showTutorial && <TutorialOverlay onClose={() => setShowTutorial(false)} />}
 
-      <CameraFeed onHandData={setHandData} />
+      <CameraFeed onHandData={onHandData} />
 
-      <div className="ui-layer" style={{ position: 'absolute', top: 20, zIndex: 100, textAlign: 'center', width: '100%' }}>
-        <div className="glass-panel" style={{ display: 'inline-block', minWidth: '300px' }}>
-          {gameStatus === "idle" && (
-            <div>
-              <h1>AI Ocean Draw</h1>
-              <p style={{ marginBottom: '1.5rem' }}>Pinch your fingers to draw!</p>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                <button onClick={startGame}>Start Game</button>
-                <button onClick={() => setShowTutorial(true)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--primary)' }}>Tutorial</button>
+      {/* Game Header - Only visible when playing */}
+      {gameStatus === "playing" && (
+        <div className="game-header">
+          <div className="glass-panel" style={{ display: 'inline-flex', alignItems: 'center', gap: '2rem', padding: '1rem 2rem' }}>
+            <div className="target-word">
+              <span style={{ opacity: 0.7, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Draw this</span>
+              <h2 style={{ fontSize: '2rem', color: 'var(--primary)', lineHeight: 1 }}>{targetWord}</h2>
+            </div>
+
+            <div className="timer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', fontFamily: 'monospace' }}>{timeLeft}s</span>
+            </div>
+
+            <div className="ai-vision" style={{ borderLeft: '1px solid var(--glass-border)', paddingLeft: '2rem' }}>
+              <span style={{ opacity: 0.7, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>AI sees</span>
+              <div style={{ color: 'var(--secondary)', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                {guesses[0] ? guesses[0] : <span style={{ opacity: 0.5 }}>Drawing...</span>}
               </div>
             </div>
-          )}
-
-          {gameStatus === "playing" && (
-            <div>
-              <h2>Draw: <span style={{ color: 'var(--primary)', fontSize: '2.5rem' }}>{targetWord}</span></h2>
-              <h3>Time: {timeLeft}s</h3>
-              <div className="guesses" style={{ marginTop: '1rem' }}>
-                <p>AI sees: <span style={{ color: 'var(--secondary)', fontWeight: 'bold' }}>{guesses.join(", ") || "..."}</span></p>
-              </div>
-            </div>
-          )}
-
-          {gameStatus === "won" && (
-            <div>
-              <h1 style={{ color: 'var(--primary)' }}>You Won!</h1>
-              <p>It was indeed a {targetWord}</p>
-              <button onClick={startGame}>Play Again</button>
-            </div>
-          )}
-
-          {gameStatus === "lost" && (
-            <div>
-              <h1 style={{ color: '#f87171' }}>Time's Up!</h1>
-              <button onClick={startGame}>Try Again</button>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Main Menu / Results Overlay */}
+      {gameStatus !== "playing" && (
+        <div className="overlay-backdrop">
+          <div className="glass-panel modal-content">
+            {gameStatus === "idle" && (
+              <div className="modal-inner">
+                <h1 className="title-gradient">Ocean Canvas</h1>
+                <p className="subtitle">An AI-powered drawing experiment</p>
+
+                <div className="instruction-grid">
+                  <div className="instruction-item">
+                    <span className="icon">☝️</span>
+                    <p><strong>Point</strong> to Draw</p>
+                  </div>
+                  <div className="instruction-item">
+                    <span className="icon">✊</span>
+                    <p><strong>Fist</strong> to Move</p>
+                  </div>
+                </div>
+
+                <div className="button-group">
+                  <button onClick={startGame} className="btn-primary">Start Game</button>
+                  <button onClick={() => setShowTutorial(true)} className="btn-secondary">How to Play</button>
+                </div>
+              </div>
+            )}
+
+            {gameStatus === "won" && (
+              <div className="modal-inner">
+                <div className="result-icon">🎉</div>
+                <h2 className="text-gradient">Masterpiece!</h2>
+                <p>The AI correctly identified your <strong>{targetWord}</strong>.</p>
+                <div className="button-group">
+                  <button onClick={startGame} className="btn-primary">Play Again</button>
+                </div>
+              </div>
+            )}
+
+            {gameStatus === "lost" && (
+              <div className="modal-inner">
+                <div className="result-icon">⌛</div>
+                <h2>Time's Up</h2>
+                <p>The AI couldn't quite see a <strong>{targetWord}</strong>.</p>
+                <p className="hint">Try drawing bigger or clearer lines!</p>
+                <div className="button-group">
+                  <button onClick={startGame} className="btn-primary">Try Again</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="canvas-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', position: 'relative', zIndex: 5 }}>
         <div className="canvas-container">
-          <DrawingCanvas handResults={handData} exportRef={canvasExportRef} />
+          <DrawingCanvas handDataRef={handDataRef} exportRef={canvasExportRef} />
         </div>
       </div>
 
-      <div className="debug-cursor" style={{
-        position: 'absolute',
-        opacity: 0.8,
-        pointerEvents: 'none',
-        zIndex: 150
-        // We could render a cursor here based on handData for better UX
-      }}>
-        {handData && handData.multiHandLandmarks && handData.multiHandLandmarks[0] && (
-          <div style={{
-            position: 'fixed',
-            left: `${(1 - handData.multiHandLandmarks[0][8].x) * 100}%`,
-            top: `${handData.multiHandLandmarks[0][8].y * 100}%`,
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            backgroundColor: 'var(--primary)',
-            border: '3px solid white',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 15px var(--primary)'
-          }} />
-        )}
-      </div>
+      <CursorOverlay handDataRef={handDataRef} />
     </div>
   );
 }
+
+// Separate component for High-Performance Cursor
+const CursorOverlay = ({ handDataRef }) => {
+  const cursorRef = useRef(null);
+
+  useEffect(() => {
+    let animId;
+    const update = () => {
+      if (handDataRef.current && handDataRef.current.multiHandLandmarks && handDataRef.current.multiHandLandmarks[0]) {
+        const landmarks = handDataRef.current.multiHandLandmarks[0];
+        const indexTip = landmarks[8];
+        const x = (1 - indexTip.x) * 100; // Mirror
+        const y = indexTip.y * 100;
+
+        if (cursorRef.current) {
+          cursorRef.current.style.display = 'block';
+          cursorRef.current.style.left = `${x}%`;
+          cursorRef.current.style.top = `${y}%`;
+        }
+      } else {
+        if (cursorRef.current) cursorRef.current.style.display = 'none';
+      }
+      animId = requestAnimationFrame(update);
+    };
+    animId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  return (
+    <div className="debug-cursor" style={{
+      position: 'absolute',
+      opacity: 0.8,
+      pointerEvents: 'none',
+      zIndex: 150,
+      top: 0, left: 0, width: '100%', height: '100%'
+    }}>
+      <div ref={cursorRef} style={{
+        position: 'fixed',
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        backgroundColor: 'var(--primary)',
+        border: '3px solid white',
+        transform: 'translate(-50%, -50%)',
+        boxShadow: '0 0 15px var(--primary)',
+        display: 'none',
+        transition: 'left 0.1s linear, top 0.1s linear' // Add CSS smoothing
+      }} />
+    </div>
+  );
+};
 
 export default App;

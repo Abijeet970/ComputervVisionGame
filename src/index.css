@@ -119,9 +119,21 @@ h1 {
   border: 4px solid var(--glass-border);
 }
 
-/* Hidden video element */
+/* Visible video element */
 .input_video {
-  display: none;
+  display: block;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 240px;
+  height: 180px;
+  border-radius: 12px;
+  border: 2px solid var(--primary);
+  z-index: 200;
+  opacity: 0.7;
+  transform: scaleX(-1);
+  /* Mirror effect to match logic */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Debug overlay */
@@ -144,10 +156,150 @@ h1 {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.85);
+  /* Darker backdrop */
   backdrop-filter: blur(8px);
   z-index: 200;
   display: flex;
   justify-content: center;
   align-items: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Content */
+.modal-content {
+  background: rgba(30, 41, 59, 0.7);
+  /* Darker glass */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3rem;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  transform: translateY(0);
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-inner h1 {
+  font-size: 3.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.1;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-bottom: 2rem;
+}
+
+/* Game Header */
+.game-header {
+  position: absolute;
+  top: 2rem;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  /* Let clicks pass through */
+}
+
+/* Instruction Grid */
+.instruction-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.instruction-item {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 120px;
+}
+
+.instruction-item .icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.instruction-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+/* Gradients */
+.title-gradient {
+  background: linear-gradient(135deg, #fff 0%, #bae6fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Buttons */
+.button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #0f172a;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 99px;
+  /* Pill shape */
+  box-shadow: 0 0 20px rgba(45, 212, 191, 0.4);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 99px;
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.result-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
 }

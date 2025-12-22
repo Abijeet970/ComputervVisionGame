@@ -1,9 +1,26 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
-const DrawingCanvas = ({ handResults, exportRef }) => {
+const DrawingCanvas = ({ handDataRef, exportRef }) => {
     const canvasRef = useRef(null);
-    const [isPinching, setIsPinching] = useState(false);
     const prevPoint = useRef(null);
+    const isDrawingRef = useRef(false);
+    const smoothedPos = useRef(null); // {x, y}
+
+    // Helper: Linear Interpolation
+    const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
+
+    // Helper: Detect if a finger is open (Extended)
+    // Checks if the Tip is further from Wrist than the PIP (Knuckle area)
+    const isFingerOpen = (landmarks, tipIdx, pipIdx) => {
+        const wrist = landmarks[0];
+        const tip = landmarks[tipIdx];
+        const pip = landmarks[pipIdx];
+
+        const distTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+        const distPip = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+
+        return distTip > distPip;
+    };
 
     // Clear canvas function
     useEffect(() => {
@@ -11,6 +28,7 @@ const DrawingCanvas = ({ handResults, exportRef }) => {
             exportRef.current = {
                 clear: () => {
                     const canvas = canvasRef.current;
+                    if (!canvas) return;
                     const ctx = canvas.getContext('2d');
                     ctx.fillStyle = '#FFFFFF';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -18,68 +36,93 @@ const DrawingCanvas = ({ handResults, exportRef }) => {
                 },
                 getBlob: async () => {
                     const canvas = canvasRef.current;
+                    if (!canvas) return null;
                     return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
                 }
             };
             // Init white background
-            exportRef.current.clear();
+            if (canvasRef.current) exportRef.current.clear();
         }
     }, [exportRef]);
 
     useEffect(() => {
-        if (!handResults || !handResults.multiHandLandmarks || handResults.multiHandLandmarks.length === 0) {
-            prevPoint.current = null;
-            return;
-        }
-
-        const landmarks = handResults.multiHandLandmarks[0];
-        const indexTip = landmarks[8];
-        const thumbTip = landmarks[4];
-
-        // Calculate distance for pinch
-        const distance = Math.hypot(
-            indexTip.x - thumbTip.x,
-            indexTip.y - thumbTip.y
-        );
-
-        // Pinch threshold (experimentally determined, around 0.05-0.1 in relative coords)
-        const PINCH_THRESHOLD = 0.05;
-        const pinching = distance < PINCH_THRESHOLD;
-        setIsPinching(pinching);
-
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
+        let animationFrameId;
 
-        // Flip x for mirror effect
-        const x = (1 - indexTip.x) * width;
-        const y = indexTip.y * height;
-
-        if (pinching) {
-            ctx.lineWidth = 5;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000000';
-
-            if (prevPoint.current) {
-                ctx.beginPath();
-                ctx.moveTo(prevPoint.current.x, prevPoint.current.y);
-                ctx.lineTo(x, y);
-                ctx.stroke();
+        const render = () => {
+            if (!handDataRef.current || !handDataRef.current.multiHandLandmarks || handDataRef.current.multiHandLandmarks.length === 0) {
+                prevPoint.current = null;
+                smoothedPos.current = null;
+                isDrawingRef.current = false;
+                animationFrameId = requestAnimationFrame(render);
+                return;
             }
-            prevPoint.current = { x, y };
-        } else {
-            prevPoint.current = null;
-        }
 
-        // Draw cursor (always visible)
-        // We need to restore context or draw on a separate layer/overlay to not mess up the drawing.
-        // For simplicity, we just won't draw cursor on main canvas, or we need a specific 'cursor' overlay.
-        // Let's rely on the user seeing their drawing. But a cursor is helpful.
-        // Actually, drawing a temporary cursor involves clearing/redrawing which is expensive on same canvas.
-        // We'll leave the cursor out for now or assume specific UI overlay in parent.
+            const landmarks = handDataRef.current.multiHandLandmarks[0];
+            const indexTip = landmarks[8];
 
-    }, [handResults]);
+            // Logic: 
+            // - Fist (Index Curled) = Move Cursor (Hover)
+            // - Index Open = Draw
+
+            // index finger tips: 8 (TIP), 6 (PIP)
+            const indexOpen = isFingerOpen(landmarks, 8, 6);
+
+            // We can also check adjacent fingers to ensure "Pointing" vs "Open Hand", 
+            // but the user specific request was "index finger open to draw".
+            // So we'll strictly follow that. 
+            // If Index is open -> Draw.
+            // If Index is closed (Fist) -> Hover.
+
+            isDrawingRef.current = indexOpen;
+
+            // Calculate Target Position (Index Tip)
+            const width = canvas.width;
+            const height = canvas.height;
+            const targetX = (1 - indexTip.x) * width; // Mirror
+            const targetY = indexTip.y * height;
+
+            // Smoothing
+            const SMOOTHING_FACTOR = 0.5;
+
+            let currentX, currentY;
+
+            if (smoothedPos.current) {
+                currentX = lerp(smoothedPos.current.x, targetX, SMOOTHING_FACTOR);
+                currentY = lerp(smoothedPos.current.y, targetY, SMOOTHING_FACTOR);
+            } else {
+                currentX = targetX;
+                currentY = targetY;
+            }
+            smoothedPos.current = { x: currentX, y: currentY };
+
+            // Drawing
+            if (isDrawingRef.current) {
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#000000';
+                ctx.lineJoin = 'round';
+
+                if (prevPoint.current) {
+                    ctx.beginPath();
+                    ctx.moveTo(prevPoint.current.x, prevPoint.current.y);
+                    ctx.lineTo(currentX, currentY);
+                    ctx.stroke();
+                }
+                prevPoint.current = { x: currentX, y: currentY };
+            } else {
+                prevPoint.current = null;
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        };
+
+        render();
+
+        return () => cancelAnimationFrame(animationFrameId);
+    }, []);
 
     return (
         <canvas
