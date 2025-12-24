@@ -114,15 +114,17 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Background Bubbles */}
-      <div className="bubble" style={{ left: '10%', width: '40px', height: '40px', animationDelay: '0s' }}></div>
-      <div className="bubble" style={{ left: '30%', width: '60px', height: '60px', animationDelay: '2s' }}></div>
-      <div className="bubble" style={{ left: '70%', width: '30px', height: '30px', animationDelay: '4s' }}></div>
-      <div className="bubble" style={{ left: '80%', width: '50px', height: '50px', animationDelay: '1s' }}></div>
+
+      {/* AR Stage: Camera + Canvas */}
+      <div className="ar-stage" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <CameraFeed onHandData={onHandData} />
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
+          <DrawingCanvas handDataRef={handDataRef} exportRef={canvasExportRef} />
+        </div>
+        <CursorOverlay handDataRef={handDataRef} />
+      </div>
 
       {showTutorial && <TutorialOverlay onClose={() => setShowTutorial(false)} />}
-
-      <CameraFeed onHandData={onHandData} />
 
       {/* Game Header - Only visible when playing */}
       {gameStatus === "playing" && (
@@ -154,7 +156,7 @@ function App() {
             {gameStatus === "idle" && (
               <div className="modal-inner">
                 <h1 className="title-gradient">Ocean Canvas</h1>
-                <p className="subtitle">An AI-powered drawing experiment</p>
+                <p className="subtitle">An AI-powered AR drawing experiment</p>
 
                 <div className="instruction-grid">
                   <div className="instruction-item">
@@ -199,14 +201,6 @@ function App() {
           </div>
         </div>
       )}
-
-      <div className="canvas-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', position: 'relative', zIndex: 5 }}>
-        <div className="canvas-container">
-          <DrawingCanvas handDataRef={handDataRef} exportRef={canvasExportRef} />
-        </div>
-      </div>
-
-      <CursorOverlay handDataRef={handDataRef} />
     </div>
   );
 }

@@ -38,8 +38,14 @@ const CameraFeed = ({ onHandData }) => {
   return (
     <video
       ref={videoRef}
-      className="input_video"
+      className="ar-video"
       playsInline
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        transform: 'scaleX(-1)' // Mirror it here too
+      }}
     />
   );
 };

@@ -106,35 +106,7 @@ h1 {
   -webkit-text-fill-color: transparent;
 }
 
-.canvas-container {
-  position: relative;
-  width: 800px;
-  height: 600px;
-  margin: 20px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  z-index: 5;
-  border: 4px solid var(--glass-border);
-}
-
-/* Visible video element */
-.input_video {
-  display: block;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 240px;
-  height: 180px;
-  border-radius: 12px;
-  border: 2px solid var(--primary);
-  z-index: 200;
-  opacity: 0.7;
-  transform: scaleX(-1);
-  /* Mirror effect to match logic */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
+/* AR Stage is handled via inline styles for now to ensure 100% coverage */
 
 /* Debug overlay */
 .debug-overlay {

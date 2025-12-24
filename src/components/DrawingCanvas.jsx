@@ -30,20 +30,45 @@ const DrawingCanvas = ({ handDataRef, exportRef }) => {
                     const canvas = canvasRef.current;
                     if (!canvas) return;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear to transparent
                     prevPoint.current = null;
                 },
                 getBlob: async () => {
                     const canvas = canvasRef.current;
                     if (!canvas) return null;
-                    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+
+                    // Composite over white for AI
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    const tCtx = tempCanvas.getContext('2d');
+
+                    tCtx.fillStyle = '#FFFFFF';
+                    tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    tCtx.drawImage(canvas, 0, 0);
+
+                    return new Promise(resolve => tempCanvas.toBlob(resolve, 'image/jpeg'));
                 }
             };
-            // Init white background
+            // Clear on init
             if (canvasRef.current) exportRef.current.clear();
         }
     }, [exportRef]);
+
+    useEffect(() => {
+        // Handle window resize for canvas
+        const handleResize = () => {
+            if (canvasRef.current) {
+                // Save current image? No, just clear on resize for simplicity or keep it.
+                // Resetting size clears canvas.
+                canvasRef.current.width = window.innerWidth;
+                canvasRef.current.height = window.innerHeight;
+            }
+        };
+        handleResize(); // Init
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
