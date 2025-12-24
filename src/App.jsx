@@ -5,7 +5,13 @@ import TutorialOverlay from './components/TutorialOverlay';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini
+// Initialize Gemini
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+if (!API_KEY) {
+  console.error("❌ MISSING API KEY! Please check your .env file and restart the server.");
+} else {
+  console.log("✅ API Key loaded successfully.");
+}
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -62,7 +68,10 @@ function App() {
 
         try {
           const blob = await canvasExportRef.current.getBlob();
-          if (!blob) return;
+          if (!blob) {
+            console.log("Canvas empty or blob failed");
+            return;
+          }
 
           // Convert Blob to Base64
           const reader = new FileReader();
@@ -70,30 +79,35 @@ function App() {
           reader.onloadend = async () => {
             const base64data = reader.result.split(',')[1];
 
-            const result = await model.generateContent([
-              `Look at this drawing. Based on the lines, guess what it is. Return ONLY a comma-separated list of 3 most likely objects. e.g. "Cat, Dog, Bear". If it's empty, say "Nothing".`,
-              {
-                inlineData: {
-                  data: base64data,
-                  mimeType: "image/jpeg",
+            try {
+              const result = await model.generateContent([
+                `Look at this sketch. Describe what you see instantly. If it's just random lines, say "Line" or "Scribble". If it's a shape, say "Circle" or "Square". If it looks like an object, guess the object. Return ONLY a comma-separated list of 3 short guesses. e.g. "Line, Curve, House".`,
+                {
+                  inlineData: {
+                    data: base64data,
+                    mimeType: "image/jpeg",
+                  },
                 },
-              },
-            ]);
+              ]);
 
-            const text = result.response.text();
-            console.log("Gemini guesses:", text);
-            setGuesses(text.split(',').map(s => s.trim()));
+              const text = result.response.text();
+              console.log("Gemini guesses:", text);
+              setGuesses(text.split(',').map(s => s.trim()));
 
-            // Check win condition (simple string matching)
-            if (text.toLowerCase().includes(targetWord.toLowerCase())) {
-              setGameStatus("won");
-              clearInterval(timerRef.current);
+              // Check win condition
+              if (text.toLowerCase().includes(targetWord.toLowerCase())) {
+                setGameStatus("won");
+                clearInterval(timerRef.current);
+              }
+            } catch (innerErr) {
+              console.error("Gemini API Error:", innerErr);
+              setGuesses(["API Error..."]);
             }
           };
         } catch (err) {
-          console.error("AI Error:", err);
+          console.error("Canvas/General Error:", err);
         }
-      }, 3000); // Guess every 3 seconds
+      }, 1500); // Back to 1.5s to be safe on quota
     }
     return () => clearInterval(interval);
   }, [gameStatus, targetWord]);
